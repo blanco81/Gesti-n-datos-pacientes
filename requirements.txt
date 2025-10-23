@@ -1,2 +1,7 @@
 
 reflex==0.8.15a1
+psycopg2-binary
+sqlalchemy
+fastapi
+uvicorn
+httpx

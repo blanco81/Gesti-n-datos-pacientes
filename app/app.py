@@ -1,4 +1,6 @@
 import reflex as rx
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.components.datatable import patient_datatable
 from app.components.modals import (
     add_patient_modal,
@@ -6,6 +8,7 @@ from app.components.modals import (
     edit_patient_modal,
     delete_patient_modal,
 )
+from app.api import router as api_router
 
 
 def index() -> rx.Component:
@@ -34,3 +37,13 @@ app = rx.App(
     ],
 )
 app.add_page(index)
+fastapi_app = FastAPI()
+fastapi_app.include_router(api_router)
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.api = fastapi_app
