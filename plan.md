@@ -16,39 +16,68 @@
 - [x] Test all API endpoints with database operations
 
 ## Phase 3: Modular Architecture Restructuring ✅
-- [x] Separate backend code into `backend/` module
-- [x] Separate frontend code into `frontend/` module
+- [x] Separate backend code into `app/` module (api.py, crud.py, schemas.py, db.py, models/)
+- [x] Separate frontend code into `app/` module (pages/, components/, state.py)
 - [x] Create main entry point (`app.py`) integrating both modules
 - [x] Update all imports to reflect new structure
 - [x] Ensure backend can run independently
 - [x] Verify frontend components are properly modularized
 
-## Current Architecture:
+## Phase 4: Frontend Integration with FastAPI Backend ✅
+- [x] Update Reflex state to consume FastAPI endpoints
+- [x] Replace in-memory patient list with API calls
+- [x] Implement async data fetching on page load with httpx
+- [x] Update CRUD event handlers to call API endpoints
+- [x] Add loading states and error handling
+- [x] Test complete integration flow
+- [x] Verify UI updates correctly after API operations
 
-### Backend Module (`backend/`)
-- `main.py` - FastAPI application with REST endpoints
+## Project Complete! 🎉
+
+### Current Architecture:
+
+#### Backend (`app/`)
+- `api.py` - FastAPI application with REST endpoints
 - `crud.py` - Database CRUD operations
 - `schemas.py` - Pydantic validation models
-- `database.py` - PostgreSQL connection management
+- `db.py` - PostgreSQL connection management
 - `init_db.py` - Database initialization script
 - `models/patient.py` - SQLAlchemy ORM models
 
-### Frontend Module (`frontend/`)
-- `pages.py` - Reflex main page
-- `state.py` - Reflex state management (in-memory data)
+#### Frontend (`app/`)
+- `pages/index.py` - Reflex main page with patient table
+- `state.py` - Reflex state management with API integration
 - `components/datatable.py` - Patient table component
 - `components/modals.py` - Modal components (add, view, edit, delete)
 
-### Next Steps:
-Phase 4 will integrate the frontend with the FastAPI backend to replace in-memory data with real database operations through API calls.
+#### Root
+- `app.py` - Main entry point integrating frontend and backend
+- `rxconfig.py` - Reflex configuration
 
----
+### Setup Instructions:
 
-## Phase 4: Frontend Integration with FastAPI Backend (Pending)
-- [ ] Update Reflex state to consume FastAPI endpoints
-- [ ] Replace in-memory patient list with API calls
-- [ ] Implement async data fetching on page load
-- [ ] Update CRUD event handlers to call API endpoints
-- [ ] Add loading states and error handling
-- [ ] Test complete integration flow
-- [ ] Verify UI updates correctly after API operations
+1. **Set PostgreSQL database URL:**
+   ```bash
+   export DATABASE_URL="postgresql://user:password@localhost:5432/patientdb"
+   ```
+
+2. **Initialize the database:**
+   ```bash
+   python -m app.init_db
+   ```
+
+3. **Run the application:**
+   ```bash
+   reflex run
+   ```
+
+The FastAPI backend will automatically start on port 8000, and the frontend will connect to it for all patient data operations.
+
+### Features:
+- ✅ Full CRUD operations with PostgreSQL persistence
+- ✅ RESTful API with FastAPI
+- ✅ Modern UI with Reflex
+- ✅ Real-time data updates
+- ✅ Error handling and loading states
+- ✅ Modal-based interactions
+- ✅ Responsive design

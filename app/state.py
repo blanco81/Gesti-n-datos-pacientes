@@ -1,6 +1,10 @@
 import reflex as rx
 from typing import TypedDict, Optional
-import uuid
+import httpx
+import asyncio
+import logging
+
+API_URL = "http://localhost:8000"
 
 
 class Patient(TypedDict):
@@ -12,48 +16,33 @@ class Patient(TypedDict):
 
 
 class PatientState(rx.State):
-    patients: list[Patient] = [
-        Patient(
-            id=str(uuid.uuid4()),
-            name="John Doe",
-            sex="Male",
-            age=45,
-            medical_record="MR001",
-        ),
-        Patient(
-            id=str(uuid.uuid4()),
-            name="Jane Smith",
-            sex="Female",
-            age=32,
-            medical_record="MR002",
-        ),
-        Patient(
-            id=str(uuid.uuid4()),
-            name="Peter Jones",
-            sex="Male",
-            age=58,
-            medical_record="MR003",
-        ),
-        Patient(
-            id=str(uuid.uuid4()),
-            name="Mary Williams",
-            sex="Female",
-            age=25,
-            medical_record="MR004",
-        ),
-        Patient(
-            id=str(uuid.uuid4()),
-            name="David Brown",
-            sex="Male",
-            age=67,
-            medical_record="MR005",
-        ),
-    ]
+    patients: list[Patient] = []
     show_add_modal: bool = False
     show_view_modal: bool = False
     show_edit_modal: bool = False
     show_delete_modal: bool = False
     selected_patient: Optional[Patient] = None
+    is_loading: bool = False
+
+    @rx.event(background=True)
+    async def load_patients(self):
+        async with self:
+            self.is_loading = True
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{API_URL}/patients/")
+                response.raise_for_status()
+                async with self:
+                    self.patients = response.json()
+        except httpx.HTTPError as http_err:
+            logging.exception(f"HTTP error occurred: {http_err}")
+            yield rx.toast.error(f"HTTP error occurred: {http_err}")
+        except Exception as e:
+            logging.exception(f"An error occurred: {e}")
+            yield rx.toast.error(f"An error occurred: {e}")
+        finally:
+            async with self:
+                self.is_loading = False
 
     @rx.event
     def open_modal(self, modal_type: str, patient_id: Optional[str] = None):
@@ -84,39 +73,90 @@ class PatientState(rx.State):
             self.show_delete_modal = False
         self.selected_patient = None
 
-    @rx.event
-    def add_patient(self, form_data: dict):
-        new_patient = Patient(
-            id=str(uuid.uuid4()),
-            name=form_data["name"],
-            sex=form_data["sex"],
-            age=int(form_data["age"]),
-            medical_record=form_data["medical_record"],
-        )
-        self.patients.append(new_patient)
-        self.show_add_modal = False
-        yield rx.toast.success("Patient added successfully!")
+    @rx.event(background=True)
+    async def add_patient(self, form_data: dict):
+        async with self:
+            self.is_loading = True
+        try:
+            new_patient_data = {
+                "name": form_data["name"],
+                "sex": form_data["sex"],
+                "age": int(form_data["age"]),
+                "medical_record": form_data["medical_record"],
+            }
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{API_URL}/patients/", json=new_patient_data
+                )
+                response.raise_for_status()
+            async with self:
+                self.show_add_modal = False
+            yield rx.toast.success("Patient added successfully!")
+            yield PatientState.load_patients
+        except httpx.HTTPError as http_err:
+            logging.exception(f"Failed to add patient: {http_err}")
+            yield rx.toast.error(f"Failed to add patient: {http_err}")
+        except Exception as e:
+            logging.exception(f"An unexpected error occurred: {e}")
+            yield rx.toast.error(f"An unexpected error occurred: {e}")
+        finally:
+            async with self:
+                self.is_loading = False
 
-    @rx.event
-    def update_patient(self, form_data: dict):
-        patient_id = form_data["id"]
-        for i, patient in enumerate(self.patients):
-            if patient["id"] == patient_id:
-                self.patients[i]["name"] = form_data["name"]
-                self.patients[i]["sex"] = form_data["sex"]
-                self.patients[i]["age"] = int(form_data["age"])
-                self.patients[i]["medical_record"] = form_data["medical_record"]
-                break
-        self.show_edit_modal = False
-        self.selected_patient = None
-        yield rx.toast.success("Patient updated successfully!")
+    @rx.event(background=True)
+    async def update_patient(self, form_data: dict):
+        async with self:
+            self.is_loading = True
+        try:
+            patient_id = form_data["id"]
+            updated_data = {
+                "name": form_data["name"],
+                "sex": form_data["sex"],
+                "age": int(form_data["age"]),
+                "medical_record": form_data["medical_record"],
+            }
+            async with httpx.AsyncClient() as client:
+                response = await client.put(
+                    f"{API_URL}/patients/{patient_id}", json=updated_data
+                )
+                response.raise_for_status()
+            async with self:
+                self.show_edit_modal = False
+                self.selected_patient = None
+            yield rx.toast.success("Patient updated successfully!")
+            yield PatientState.load_patients
+        except httpx.HTTPError as http_err:
+            logging.exception(f"Failed to update patient: {http_err}")
+            yield rx.toast.error(f"Failed to update patient: {http_err}")
+        except Exception as e:
+            logging.exception(f"An unexpected error occurred: {e}")
+            yield rx.toast.error(f"An unexpected error occurred: {e}")
+        finally:
+            async with self:
+                self.is_loading = False
 
-    @rx.event
-    def delete_patient(self):
-        if self.selected_patient:
-            self.patients = [
-                p for p in self.patients if p["id"] != self.selected_patient["id"]
-            ]
-            self.show_delete_modal = False
-            self.selected_patient = None
+    @rx.event(background=True)
+    async def delete_patient(self):
+        async with self:
+            if not self.selected_patient:
+                return
+            self.is_loading = True
+            patient_id = self.selected_patient["id"]
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.delete(f"{API_URL}/patients/{patient_id}")
+                response.raise_for_status()
+            async with self:
+                self.show_delete_modal = False
+                self.selected_patient = None
             yield rx.toast.success("Patient deleted successfully!")
+            yield PatientState.load_patients
+        except httpx.HTTPError as http_err:
+            logging.exception(f"Failed to delete patient: {http_err}")
+            yield rx.toast.error(f"Failed to delete patient: {http_err}")
+        except Exception as e:
+            logging.exception(f"An unexpected error occurred: {e}")
+            yield rx.toast.error(f"An unexpected error occurred: {e}")
+        finally:
+            async with self:
+                self.is_loading = False

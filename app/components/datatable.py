@@ -102,6 +102,16 @@ def patient_datatable() -> rx.Component:
                 ),
                 class_name="overflow-x-auto",
             ),
+            rx.cond(
+                PatientState.patients.length() == 0,
+                rx.el.div(
+                    rx.el.p(
+                        "No patients found. Add a new patient to get started.",
+                        class_name="text-center text-gray-500 py-10",
+                    ),
+                    class_name="bg-white rounded-b-lg",
+                ),
+            ),
             class_name="shadow ring-1 ring-black ring-opacity-5 rounded-lg",
         ),
     )
